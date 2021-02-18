@@ -1,114 +1,172 @@
-## Introduction
+### Exploratory Data Analysis Project 2
 
-This assignment uses data from
-the <a href="http://archive.ics.uci.edu/ml/">UC Irvine Machine
-Learning Repository</a>, a popular repository for machine learning
-datasets. In particular, we will be using the "Individual household
-electric power consumption Data Set" which I have made available on
-the course web site:
-
-
-* <b>Dataset</b>: <a href="https://d396qusza40orc.cloudfront.net/exdata%2Fdata%2Fhousehold_power_consumption.zip">Electric power consumption</a> [20Mb]
-
-* <b>Description</b>: Measurements of electric power consumption in
-one household with a one-minute sampling rate over a period of almost
-4 years. Different electrical quantities and some sub-metering values
-are available.
-
-
-The following descriptions of the 9 variables in the dataset are taken
-from
-the <a href="https://archive.ics.uci.edu/ml/datasets/Individual+household+electric+power+consumption">UCI
-web site</a>:
-
-<ol>
-<li><b>Date</b>: Date in format dd/mm/yyyy </li>
-<li><b>Time</b>: time in format hh:mm:ss </li>
-<li><b>Global_active_power</b>: household global minute-averaged active power (in kilowatt) </li>
-<li><b>Global_reactive_power</b>: household global minute-averaged reactive power (in kilowatt) </li>
-<li><b>Voltage</b>: minute-averaged voltage (in volt) </li>
-<li><b>Global_intensity</b>: household global minute-averaged current intensity (in ampere) </li>
-<li><b>Sub_metering_1</b>: energy sub-metering No. 1 (in watt-hour of active energy). It corresponds to the kitchen, containing mainly a dishwasher, an oven and a microwave (hot plates are not electric but gas powered). </li>
-<li><b>Sub_metering_2</b>: energy sub-metering No. 2 (in watt-hour of active energy). It corresponds to the laundry room, containing a washing-machine, a tumble-drier, a refrigerator and a light. </li>
-<li><b>Sub_metering_3</b>: energy sub-metering No. 3 (in watt-hour of active energy). It corresponds to an electric water-heater and an air-conditioner.</li>
-</ol>
-
-## Loading the data
+##Unzipping and Loading Files and packages
+```{r}
+library(ggplot2)
+library(RColorBrewer)
+library(ggthemes)
+library(dplyr)
+# Download and unzip the file:
+dir.create("./air_pollution")
+urlzip <- "https://d396qusza40orc.cloudfront.net/exdata%2Fdata%2FNEI_data.zip"
+download.file(urlzip, destfile = "./air_pollution.zip" )
+unzip("./air_pollution.zip", exdir = "./air_pollution" )
+# Load the data:
+NEI <- readRDS("./air_pollution/summarySCC_PM25.rds")
+SCC <- readRDS("./air_pollution/Source_Classification_Code.rds")
+```
+## check data 
+```{r}
+# Check NEI data
+str(NEI)
+head(NEI)
+summary(NEI)
+# Check SCC data
+str(SCC)
+head(SCC)
+summary(SCC)
+```
 
 
+## Question 1: (![plot1.R](https://github.com/Tromba22/exploratory_data_analysis/project_2/plot1.R))
+Have **total emissions** from PM2.5 decreased in the United States from 1999 to 2008? Using *the base plotting system*, make a plot showing the total PM2.5 emission from all sources for each of the years 1999, 2002, 2005, and 2008.
+
+```{r pressure, echo=FALSE}
+tot_emissions <- NEI %>%
+  select(Emissions, year) %>%
+  group_by(year) %>%
+  summarise(Total_Emissions = sum(Emissions, na.rm = TRUE))
+png("plot1.png")
+plot(tot_emissions$year, tot_emissions$Total_Emissions, type = "o", 
+     col = "steelblue3",
+     xlab = "Year", ylab = expression("Total" ~ PM[2.5] ~ "Emissions (tons)"),
+     main = expression("Total US" ~ PM[2.5] ~ "Emissions by Year"))
+dev.off()
+```
+
+## Question 2: (![plot2.R](https://github.com/Tromba22/exploratory_data_analysis/project_2/plot2.R))
+Have **total emissions** from PM2.5 decreased in **the Baltimore City**, Maryland (𝚏𝚒𝚙𝚜 == "𝟸𝟺𝟻𝟷𝟶") from 1999 to 2008? Use *the base plotting system* to make a plot answering this question.
+```{r}
+tot_emi_balti <- NEI %>%
+  filter(fips == 24510) %>%
+  select(fips, Emissions, year) %>%
+  group_by(year) %>%
+  summarise(Total_Emissions = sum(Emissions, na.rm = TRUE))
+png("plot2.png")
+plot(x = tot_emi_balti$year, y = tot_emi_balti$Total_Emissions,
+     type = "o", 
+     main = expression("Total Baltimore" ~ PM[2.5] ~ "Emissions by Year"), 
+     xlab = "Year", 
+     ylab = expression("Total Baltimore "~ PM[2.5] ~ "Emissions"),
+     col = "steelblue3")
+dev.off()
+
+```
+
+## Question 3: (![plot3.R](https://github.com/Tromba22/exploratory_data_analysis/project_2/plot3.R))
+
+Of **the four types of sources** indicated by the *type* (point, nonpoint, onroad, nonroad) variable, which of these four sources have seen decreases in emissions from 1999–2008 for Baltimore City? Which have seen increases in emissions from 1999–2008? Use *the ggplot2 plotting system* to make a plot answer this question.
+```{r }
+tot_emi_baltitype <- NEI %>%
+  filter(fips == 24510) %>%
+  select(fips, type, Emissions, year) %>%
+  group_by(year, type) %>%
+  summarise(Total_Emissions = sum(Emissions, na.rm = TRUE))
+Baltimore_By_Type <- ggplot(tot_emi_baltitype, 
+                            aes(x = factor(year), 
+                                y = Total_Emissions, fill = type, 
+                                color = type)) +
+  geom_bar(stat = "identity" ) +
+  facet_grid(.~type, scales = "free", space = "free") + 
+  labs(x = "Year", y = "Emissions (Tons)", 
+       title = "Total Emissions By Type In Baltimore City, 
+       Maryland From 1999 - 2008") +
+  theme(plot.title = element_text(size = 7),
+        axis.title.x = element_text(size = 5),
+        axis.title.y = element_text(size = 5),
+        axis.text.x = element_text(angle=90, hjust=1)) +
+  scale_fill_brewer(direction = -1) +
+  theme_grey()+
+  ggsave("plot3.png", width = 30, height = 30, units = "cm")
+Baltimore_By_Type
+```
+
+## Question 4: (![plot4.R](https://github.com/Tromba22/exploratory_data_analysis/project_2/plot4.R))
+*Across the United States*, how have **emissions from coal** combustion-related sources changed from 1999–2008?
+```{r }
+SCC_Coal_Comb <- SCC %>%
+  filter(grepl('[Cc]ombustion', SCC.Level.One)) %>%
+  filter(grepl("[Cc]oal", SCC.Level.Three)) %>%
+  select(SCC, SCC.Level.One, SCC.Level.Three)
+
+NEI_Coal_Comb <- inner_join(NEI, SCC_Coal_Comb, by = "SCC")
+NEI_Coal_Comb_Plot <- ggplot(NEI_Coal_Comb, aes(factor(year), Emissions)) +
+  geom_bar(stat = "identity", fill = "peachpuff3", width = 0.5) +
+  labs(x = "Year", y = expression("Total PM"[2.5]*" Emission (10^5 Tons)"),
+       title =expression("PM"[2.5]*" Coal Combustion Source 
+                         Emissions Across US from 1999-2008")) +
+  scale_fill_brewer(direction = -1) + 
+  theme_economist() +
+  ggsave("plot4.png", width = 30, height = 30, units = "cm")
 
 
+print(NEI_Coal_Comb_Plot)
 
-When loading the dataset into R, please consider the following:
+```
 
-* The dataset has 2,075,259 rows and 9 columns. First
-calculate a rough estimate of how much memory the dataset will require
-in memory before reading into R. Make sure your computer has enough
-memory (most modern computers should be fine).
+## Question 5: (![plot5.R](https://github.com/Tromba22/exploratory_data_analysis/project_2/plot5.R))
+How have *emissions from motor vehicle* sources changed from 1999–2008 in **Baltimore City**?
+```{r}
+SCC_Vehicles <- SCC %>%
+  filter(grepl('[Vv]ehicle', SCC.Level.Two)) %>%
+  select(SCC, SCC.Level.Two)
 
-* We will only be using data from the dates 2007-02-01 and
-2007-02-02. One alternative is to read the data from just those dates
-rather than reading in the entire dataset and subsetting to those
-dates.
+Tot_Emi_24510_V <- NEI %>%
+  filter(fips == "24510") %>%
+  select(SCC, fips, Emissions, year) %>%
+  inner_join(SCC_Vehicles, by = "SCC") %>%
+  group_by(year) %>%
+  summarise(Total_Emissions = sum(Emissions, na.rm = TRUE)) %>%
+  select(Total_Emissions, year)
+Baltimore_Vehicles_Plot <- ggplot(Tot_Emi_24510_V, aes(factor(year), 
+                                                       Total_Emissions)) +
+  geom_bar(stat = "identity", fill = "sienna3", width = 0.5) +
+  labs(x = "Year", y = "Emissions (Tons)",
+       title = "Total Motor Vehicle Related Emissions In Baltimore City From 1999 - 2008") +
+  theme(plot.title = element_text(size = 14),
+        axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12)) +
+  ggsave("plot5.png", width = 30, height = 30, units = "cm")
 
-* You may find it useful to convert the Date and Time variables to
-Date/Time classes in R using the `strptime()` and `as.Date()`
-functions.
+print(Baltimore_Vehicles_Plot)
+```
 
-* Note that in this dataset missing values are coded as `?`.
+## Question 6: (![plot6.R](https://github.com/Tromba22/exploratory_data_analysis/project_2/plot6.R))
+Compare emissions from *motor vehicle sources* in **Baltimore City** with emissions from motor vehicle sources in **Los Angeles County//, California (\color{red}{\verb|fips == "06037"|}fips == "06037"). Which city has seen greater changes over time in motor vehicle emissions?
+```{r}
+Tot_Emi_Two_Locs <- NEI %>%
+  filter(fips == "24510" | fips == "06037") %>%
+  select(fips, SCC, Emissions, year) %>%
+  inner_join(SCC_Vehicles, by = "SCC") %>%
+  group_by(fips, year) %>%
+  summarise(Total_Emissions = sum(Emissions, na.rm = TRUE)) %>%
+  select(Total_Emissions, fips, year)
+Tot_Emi_Two_Locs$fips <- gsub("24510", "Baltimore City", Tot_Emi_Two_Locs$fips)
+Tot_Emi_Two_Locs$fips <- gsub("06037", "Los Angeles County", Tot_Emi_Two_Locs$fips)
+Two_Locs_Plot <- ggplot(Tot_Emi_Two_Locs, aes(x = factor(year), y = Total_Emissions, fill = fips)) +
+  geom_bar(stat = "identity", width = 0.7) +
+  facet_grid(.~fips) + 
+  labs(x = "Year", y = "Emissions (Tons)", 
+       title = "Comparison of Motor Vehicle Related Emissions 
+       Between Baltimore City and Los Angeles From 1999 - 2008") +
+  theme(plot.title = element_text(size = 14),
+        axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        strip.text.x = element_text(size = 12)) +
+  theme_dark() + 
+  ggsave("plot6.png", width = 30, height = 30, units = "cm")
 
+print(Two_Locs_Plot)
 
-## Making Plots
-
-Our overall goal here is simply to examine how household energy usage
-varies over a 2-day period in February, 2007. Your task is to
-reconstruct the following plots below, all of which were constructed
-using the base plotting system.
-
-First you will need to fork and clone the following GitHub repository:
-[https://github.com/rdpeng/ExData_Plotting1](https://github.com/rdpeng/ExData_Plotting1)
-
-
-For each plot you should
-
-* Construct the plot and save it to a PNG file with a width of 480
-pixels and a height of 480 pixels.
-
-* Name each of the plot files as `plot1.png`, `plot2.png`, etc.
-
-* Create a separate R code file (`plot1.R`, `plot2.R`, etc.) that
-constructs the corresponding plot, i.e. code in `plot1.R` constructs
-the `plot1.png` plot. Your code file **should include code for reading
-the data** so that the plot can be fully reproduced. You should also
-include the code that creates the PNG file.
-
-* Add the PNG file and R code file to your git repository
-
-When you are finished with the assignment, push your git repository to
-GitHub so that the GitHub version of your repository is up to
-date. There should be four PNG files and four R code files.
-
-
-The four plots that you will need to construct are shown below. 
-
-
-### Plot 1
-
-
-![plot of chunk unnamed-chunk-2](figure/unnamed-chunk-2.png) 
-
-
-### Plot 2
-
-![plot of chunk unnamed-chunk-3](figure/unnamed-chunk-3.png) 
-
-
-### Plot 3
-
-![plot of chunk unnamed-chunk-4](figure/unnamed-chunk-4.png) 
-
-
-### Plot 4
-
-![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5.png) 
+```
 
